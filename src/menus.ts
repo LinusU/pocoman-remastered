@@ -25,6 +25,15 @@ export interface MenuContext {
   icon: (tile: number) => string;
 }
 
+/** Filled in by Vite (vite.config.ts): the commit this was built from. */
+declare const __BUILD__: { commit: string; time: number };
+
+/** Which version is running, so it's clear whether an update has arrived. */
+const versionLabel = () =>
+  __BUILD__.time
+    ? `Version ${__BUILD__.commit} · ${new Date(__BUILD__.time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`
+    : 'Development version';
+
 /** Opened from the Home Screen (or installed), so already fullscreen. */
 const runningAsApp = () =>
   matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches
@@ -357,7 +366,7 @@ export function createMenus(ctx: MenuContext) {
       button(v, 'Load a different POCOMAN.MAP', ctx.loadNewMap),
       button(v, 'Back', back),
     );
-    panel.append(menu);
+    panel.append(menu, el('div', 'hint-bar', versionLabel()));
     v.root.append(panel);
     v.onBack = back;
     ui.show(v, focus);
@@ -385,7 +394,8 @@ export function createMenus(ctx: MenuContext) {
       el('p', '', '<b>PocoMan</b> © 1996 Sleepless Software. Original game by Ron Hitchens, artwork by Joe Hitchens, Windows 95/NT port by Bryan Ford.'),
       el('p', '', 'Levels, voice lines and sounds are read from your own copy of <b>POCOMAN.MAP</b>; none of it is part of this remake.'),
       el('p', '', '<b>PocoMan Remastered</b>: a fan remake built with PixiJS. Music and new sound effects generated with ElevenLabs via fal.ai.'),
-      el('p', 'dim', 'Thanks for playing!'));
+      el('p', 'dim', 'Thanks for playing!'),
+      el('div', 'hint-bar', versionLabel()));
     const back = button(v, 'Back', () => mainMenu(5));
     back.style.alignItems = 'center';
     panel.append(back);
