@@ -243,17 +243,33 @@ export async function saveTextFile(name: string, text: string, type = 'applicati
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Asks for a file and resolves with its text, or null if none was chosen. */
-export function pickTextFile(accept: string): Promise<string | null> {
+let picker: HTMLInputElement | null = null;
+
+/**
+ * Asks for a file and resolves with its text, or null if none was chosen.
+ * There's no type filter: iPhones grey out files whose type they don't
+ * recognise, so the caller checks what it gets instead.
+ */
+export function pickTextFile(): Promise<string | null> {
   return new Promise((resolve) => {
-    const input = el('input');
+    // The input has to be in the page while the picker is open; a detached
+    // one can be garbage collected meanwhile, and then the choice is lost.
+    // Browsers that don't report a cancelled picker leave it behind, so
+    // clear out the previous one first.
+    picker?.remove();
+    const input = (picker = el('input'));
     input.type = 'file';
-    input.accept = accept;
+    input.style.cssText = 'position:fixed;left:-1000px;top:0;opacity:0';
+    const done = (text: Promise<string> | null) => {
+      input.remove();
+      resolve(text);
+    };
     input.addEventListener('change', () => {
       const file = input.files?.[0];
-      resolve(file ? file.text() : null);
+      done(file ? file.text() : null);
     });
-    input.addEventListener('cancel', () => resolve(null));
+    input.addEventListener('cancel', () => done(null));
+    document.body.appendChild(input);
     input.click();
   });
 }

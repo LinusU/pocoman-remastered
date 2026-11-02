@@ -174,7 +174,7 @@ export function createMenus(ctx: MenuContext) {
     }, () => profiles(store.profiles.length))));
     const importAt = v.items.length;
     list.append(button(v, 'Import profile', async () => {
-      const text = await pickTextFile('.json,application/json');
+      const text = await pickTextFile();
       if (text === null) return;
       try {
         profileActions(store.importProfile(text));
