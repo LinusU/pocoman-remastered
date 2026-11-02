@@ -2,6 +2,8 @@
 
 A Sokoban game in PixiJS v8, styled after `refs/reference-mockup.webp`.
 
+Play it at <https://linusu.com/pocoman-remastered/>.
+
 ```bash
 npm install
 npm run dev
