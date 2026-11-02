@@ -25,7 +25,12 @@ export interface MenuContext {
   icon: (tile: number) => string;
 }
 
-const AVATAR_COLORS = ['#f7c531', '#e0462d', '#3fbf5a', '#3f7fe0', '#b07de0', '#f0902a', '#4cc9d8'];
+/** Opened from the Home Screen (or installed), so already fullscreen. */
+const runningAsApp = () =>
+  matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches
+  || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+const AVATAR_COLORS =['#f7c531', '#e0462d', '#3fbf5a', '#3f7fe0', '#b07de0', '#f0902a', '#4cc9d8'];
 const avatarColor = (p: Profile) => AVATAR_COLORS[[...p.id].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_COLORS.length];
 
 /** A tiny top-down map of a level for the level select. */
@@ -291,7 +296,7 @@ export function createMenus(ctx: MenuContext) {
     ui.show(v, v.items.length - 1);
   }
 
-  function options(back: () => void) {
+  function options(back: () => void, focus = 0) {
     const s = store.settings;
     const v = new View('options dim');
     const panel = el('div', 'panel');
@@ -309,15 +314,39 @@ export function createMenus(ctx: MenuContext) {
       slider(v, 'PocoMan’s voice', () => s.voice, set('voice')),
       toggle(v, 'Footstep sounds', () => s.motionSounds, set('motionSounds')),
       toggle(v, 'Show controls', () => s.showHints, set('showHints')),
-      toggle(v, 'Fullscreen', () => !!document.fullscreenElement, (on) => {
-        if (on) document.documentElement.requestFullscreen?.().catch(() => undefined);
-        else document.exitFullscreen?.().catch(() => undefined);
-      }),
+    );
+    // Already fullscreen when opened from the Home Screen. iPhones can't put
+    // a page fullscreen at all, so there it explains the Home Screen instead.
+    const fullscreenAt = v.items.length;
+    if (!runningAsApp()) {
+      menu.append(document.fullscreenEnabled
+        ? toggle(v, 'Fullscreen', () => !!document.fullscreenElement, (on) => {
+          if (on) document.documentElement.requestFullscreen().catch(() => undefined);
+          else document.exitFullscreen().catch(() => undefined);
+        })
+        : button(v, 'Fullscreen', () => homeScreenHelp(() => options(back, fullscreenAt)), 'Add PocoMan to your Home Screen'));
+    }
+    menu.append(
       toggle(v, 'Camera tuning panel', ctx.cameraPanel.get, ctx.cameraPanel.set),
       button(v, 'Load a different POCOMAN.MAP', ctx.loadNewMap),
       button(v, 'Back', back),
     );
     panel.append(menu);
+    v.root.append(panel);
+    v.onBack = back;
+    ui.show(v, focus);
+  }
+
+  function homeScreenHelp(back: () => void) {
+    const v = new View('credits dim');
+    const panel = el('div', 'panel credits');
+    panel.append(el('div', 'head', '<h2>Play fullscreen</h2>'),
+      el('p', '', 'Your browser can’t put a web page fullscreen, but PocoMan can live on your Home Screen and open fullscreen from there, like an app:'),
+      el('p', '', '1. Tap <b>Share</b> in Safari’s toolbar.<br>2. Choose <b>Add to Home Screen</b>.<br>3. Open <b>PocoMan</b> from your Home Screen.'),
+      el('p', 'dim', 'The Home Screen app keeps its own saves, so it asks for POCOMAN.MAP once more the first time.'));
+    const ok = button(v, 'Back', back);
+    ok.style.alignItems = 'center';
+    panel.append(ok);
     v.root.append(panel);
     v.onBack = back;
     ui.show(v);

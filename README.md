@@ -40,6 +40,11 @@ to the right side and makes the push. Tap the selection again, or empty
 floor, to cancel. On a touch screen a bar of Undo, Restart (tap twice) and
 Menu buttons appears along the bottom, or down the side in landscape.
 
+iPhones can't put a web page fullscreen, so there the Fullscreen option
+explains adding PocoMan to the Home Screen instead; opened from there it runs
+fullscreen like an app (`public/manifest.webmanifest`), keeping clear of the
+notch and home bar.
+
 The original voice lines and sounds from the file play where they did in
 PocoMan (level intros, the first object on a goal, wins, "Oops" for a
 cornered object, "Bad move" for undo, "No way, Jose" for a locked level, and
