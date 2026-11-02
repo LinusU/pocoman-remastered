@@ -27,10 +27,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe` keeps the top reachable when the content is taller than the screen. */
+  justify-content: safe center;
   gap: 18px;
   padding: 24px 16px;
   box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   pointer-events: auto;
   animation: view-in 0.28s ease-out both;
 }
@@ -131,7 +135,11 @@ h3 { font-size: 15px; color: var(--muted); font-weight: 500; text-transform: upp
 /* --- Panels -------------------------------------------------------------- */
 .panel {
   width: min(560px, 94vw);
-  max-height: 86vh;
+  /* Never taller than the screen; what doesn't fit scrolls inside. */
+  max-height: 100%;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -236,3 +244,18 @@ h3 { font-size: 15px; color: var(--muted); font-weight: 500; text-transform: upp
 .drop-zone .big { font-family: var(--font); font-size: 22px; font-weight: 600; }
 .drop-zone .small { color: var(--muted); font-size: 14px; }
 .error { min-height: 20px; color: #ff8a7a; font-size: 14px; text-align: center; }
+
+/* --- Short screens (phones, especially in landscape) ----------------------- */
+@media (max-height: 560px) {
+  .view { gap: 12px; }
+  h2 { font-size: 26px; }
+  .logo { font-size: clamp(44px, 14vh, 120px); }
+  .title-menu { padding-top: 12px; }
+  .title-menu .logo { font-size: clamp(36px, 11vh, 92px); }
+  .press-any { margin-top: 12px; }
+  .menu { gap: 8px; }
+  .btn { padding: 8px 16px; font-size: 18px; }
+  .panel { padding: 14px 16px; gap: 10px; border-radius: 16px; }
+  .complete-title { font-size: 30px; }
+  .transform img { width: 48px; height: 48px; }
+}
