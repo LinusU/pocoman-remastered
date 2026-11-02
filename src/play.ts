@@ -307,10 +307,15 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
       }
     }
 
-    const corners = [P(0, 0), P(game.width, 0), P(0, game.height), P(game.width, game.height)];
-    const r = rectOf([...corners, ...corners.map((c) => ({ x: c.x, y: c.y - H * CELL }))]);
-    // Room above for upright actors in the back row, and below for the rock.
-    boardRect = { ...r, top: r.top - CELL * 0.8, bottom: r.bottom + CELL * 1.5 };
+    // Fit to what's drawn: the walls enclose the level, and the rock hangs
+    // below by different amounts, so it's measured. A little room on top for
+    // upright actors in the back row.
+    const r = walls.reduce((a, { rect: w }) => ({
+      left: Math.min(a.left, w.left), top: Math.min(a.top, w.top),
+      right: Math.max(a.right, w.right), bottom: Math.max(a.bottom, w.bottom),
+    }), { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+    const rock = island.getLocalBounds();
+    boardRect = { ...r, top: r.top - CELL * 0.4, bottom: Math.max(r.bottom, rock.maxY) + CELL * 0.15 };
   }
 
   /** Sort by whichever end of a step is nearer the viewer, so an actor never
