@@ -30,7 +30,12 @@
   /* `safe` keeps the top reachable when the content is taller than the screen. */
   justify-content: safe center;
   gap: 18px;
-  padding: 24px 16px;
+  /* Clear of the notch, rounded corners and home bar on phones. */
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
@@ -81,7 +86,7 @@ h3 { font-size: 15px; color: var(--muted); font-weight: 500; text-transform: upp
 }
 @keyframes blink { 50% { opacity: 0.35; } }
 .press-any.item.focused { border: none; background: none; box-shadow: none; transform: none; }
-.footer-note { position: absolute; bottom: 16px; font-size: 13px; color: var(--muted); text-align: center; }
+.footer-note { position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); font-size: 13px; color: var(--muted); text-align: center; }
 
 .title-menu { justify-content: flex-start; padding-top: 6vh; }
 .title-menu .logo { font-size: clamp(48px, 8vw, 92px); }
@@ -250,7 +255,7 @@ h3 { font-size: 15px; color: var(--muted); font-weight: 500; text-transform: upp
   .view { gap: 12px; }
   h2 { font-size: 26px; }
   .logo { font-size: clamp(44px, 14vh, 120px); }
-  .title-menu { padding-top: 12px; }
+  .title-menu { padding-top: max(12px, env(safe-area-inset-top)); }
   .title-menu .logo { font-size: clamp(36px, 11vh, 92px); }
   .press-any { margin-top: 12px; }
   .menu { gap: 8px; }

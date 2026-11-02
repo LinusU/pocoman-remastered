@@ -8,7 +8,7 @@ import { designContext, designForTile, OBJECT_BOX } from './objects';
 import type { Effects, MapLevel } from './pocomap';
 import type { SaveStore, SolveResult } from './profiles';
 import { TapMoves, type TapTarget } from './tapMoves';
-import { UI_FONT, panel } from './theme';
+import { UI_FONT, panel, safeArea } from './theme';
 
 const KEY_STEP_MS = 150;
 // With the stick, step time follows how far it is pushed.
@@ -515,7 +515,15 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
 
   // --- Layout -------------------------------------------------------------
   function layout() {
-    const { width, height } = app.screen;
+    // Everything is laid out inside the part of the screen clear of the
+    // notch and home bar; the board's backdrop still fills it all.
+    const safe = safeArea();
+    const left = safe.left;
+    const right = app.screen.width - safe.right;
+    const width = right - left;
+    const height = app.screen.height - safe.top - safe.bottom;
+    const cx = left + width / 2;
+    const bottomEdge = safe.top + height;
     const b = boardRect;
     const bw = b.right - b.left;
     const bh = b.bottom - b.top;
@@ -523,21 +531,21 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
     // edge instead of taking a strip along the bottom.
     const touch = touchBar.visible;
     const column = touch && height < 560;
-    const top = width < 640 ? 150 : 96;
+    const top = safe.top + (width < 640 ? 150 : 96);
     const bottom = touch && !column ? 150 : column ? 24 : 40;
     const sides = column ? 2 * (BUTTON_SIZE + 32) : width * 0.1;
-    const scale = Math.min((width - sides) / bw, (height - top - bottom) / bh, 2.2);
+    const scale = Math.min((width - sides) / bw, (bottomEdge - top - bottom) / bh, 2.2);
     world.scale.set(scale);
     world.pivot.set(b.left + bw / 2, b.top + bh / 2);
-    worldBaseY = top + (height - top - bottom + 10) / 2;
-    world.position.set(width / 2, worldBaseY);
+    worldBaseY = top + (bottomEdge - top - bottom + 10) / 2;
+    world.position.set(cx, worldBaseY);
 
-    levelPanel.position.set(16, 16);
+    levelPanel.position.set(left + 16, safe.top + 16);
     const gap = 8;
-    let x = width - 16;
+    let x = right - 16;
     for (const c of [timeC, pushesC, movesC]) {
       x -= c.width;
-      c.c.position.set(x, width < 640 ? 88 : 16);
+      c.c.position.set(x, safe.top + (width < 640 ? 88 : 16));
       x -= gap;
     }
     touchBar.children.forEach((button, i) =>
@@ -545,11 +553,11 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
         ? button.position.set(0, i * (BUTTON_SIZE + 12))
         : button.position.set((i - 1) * (BUTTON_SIZE + 22), 0),
     );
-    if (column) touchBar.position.set(width - 16 - BUTTON_SIZE / 2, top + BUTTON_SIZE / 2);
-    else touchBar.position.set(width / 2, height - 16 - BUTTON_SIZE / 2);
+    if (column) touchBar.position.set(right - 16 - BUTTON_SIZE / 2, top + BUTTON_SIZE / 2);
+    else touchBar.position.set(cx, bottomEdge - 16 - BUTTON_SIZE / 2);
     const above = touch && !column ? BUTTON_SIZE + 52 : 0;
-    hint.position.set(width / 2, height - 12 - above);
-    toast.position.set(width / 2, height - 64 - above);
+    hint.position.set(cx, bottomEdge - 12 - above);
+    toast.position.set(cx, bottomEdge - 64 - above);
   }
 
   function setCamera(s: CameraSettings) {
