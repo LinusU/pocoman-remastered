@@ -402,17 +402,36 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
 
   function counter(name: string, width: number) {
     const c = new Container();
-    c.addChild(panel(width, 64));
+    const bg = c.addChild(new Graphics());
     const l = c.addChild(label(12, 0x9fb0e8));
     l.text = name;
-    l.anchor.set(0.5, 0);
-    l.position.set(width / 2, 8);
     const v = c.addChild(label(26, 0xf3ead2, '700'));
     v.text = '0';
-    v.anchor.set(0.5, 0);
-    v.position.set(width / 2, 24);
-    return { c, v, width };
+    /** A tile with the name over the number, or with `row` set, a slim row
+     *  that wide with the name on the left and the number on the right. */
+    const shape = (row?: number) => {
+      if (row) {
+        panel(row, ROW_HEIGHT, bg);
+        l.anchor.set(0, 0.5);
+        l.position.set(12, ROW_HEIGHT / 2);
+        v.style.fontSize = 20;
+        v.anchor.set(1, 0.5);
+        v.position.set(row - 12, ROW_HEIGHT / 2);
+      } else {
+        panel(width, 64, bg);
+        l.anchor.set(0.5, 0);
+        l.position.set(width / 2, 8);
+        v.style.fontSize = 26;
+        v.anchor.set(0.5, 0);
+        v.position.set(width / 2, 24);
+      }
+    };
+    shape();
+    return { c, v, shape };
   }
+  const ROW_HEIGHT = 30;
+  // Width of the HUD sidebar on short landscape screens.
+  const SIDEBAR = 168;
   const movesC = counter('MOVES', 92);
   const pushesC = counter('PUSHES', 92);
   const timeC = counter('TIME', 100);
@@ -527,35 +546,62 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
     const b = boardRect;
     const bw = b.right - b.left;
     const bh = b.bottom - b.top;
-    // On a short (landscape) screen the touch buttons stack down the right
-    // edge instead of taking a strip along the bottom.
-    const touch = touchBar.visible;
-    const column = touch && height < 560;
-    const top = safe.top + (width < 640 ? 150 : 96);
-    const bottom = touch && !column ? 150 : column ? 24 : 40;
-    const sides = column ? 2 * (BUTTON_SIZE + 32) : width * 0.1;
-    const scale = Math.min((width - sides) / bw, (bottomEdge - top - bottom) / bh, 2.2);
-    world.scale.set(scale);
-    world.pivot.set(b.left + bw / 2, b.top + bh / 2);
-    worldBaseY = top + (bottomEdge - top - bottom + 10) / 2;
-    world.position.set(cx, worldBaseY);
+    const counters = [movesC, pushesC, timeC];
+    const fitBoard = (x0: number, y0: number, x1: number, y1: number) => {
+      world.scale.set(Math.min((x1 - x0) / bw, (y1 - y0) / bh, 2.2));
+      world.pivot.set(b.left + bw / 2, b.top + bh / 2);
+      worldBaseY = (y0 + y1) / 2;
+      world.position.set((x0 + x1) / 2, worldBaseY);
+    };
 
-    levelPanel.position.set(left + 16, safe.top + 16);
-    const gap = 8;
-    let x = right - 16;
-    for (const c of [timeC, pushesC, movesC]) {
-      x -= c.width;
-      c.c.position.set(x, safe.top + (width < 640 ? 88 : 16));
-      x -= gap;
+    // A short, wide screen (a phone in landscape) can't spare a band across
+    // the top: everything goes in a sidebar on the right, and the board gets
+    // the full height.
+    if (height < 560 && width > height * 1.25) {
+      const sx = right - 16 - SIDEBAR;
+      let y = safe.top + 12;
+      panel(SIDEBAR, 64, levelBg);
+      levelPanel.position.set(sx, y);
+      y += 64 + 8;
+      counters.forEach((c, i) => {
+        c.shape(SIDEBAR);
+        c.c.position.set(sx, y + i * (ROW_HEIGHT + 6));
+      });
+      y += counters.length * (ROW_HEIGHT + 6) + 10;
+      Object.assign(hint.style, { wordWrap: true, wordWrapWidth: SIDEBAR, align: 'center' });
+      hint.anchor.set(0.5, 0);
+      hint.position.set(sx + SIDEBAR / 2, y);
+      // The buttons, scaled down to fit side by side.
+      const k = SIDEBAR / (3 * BUTTON_SIZE + 2 * 14);
+      touchBar.scale.set(k);
+      touchBar.children.forEach((button, i) => button.position.set((i - 1) * (BUTTON_SIZE + 14), 0));
+      touchBar.position.set(sx + SIDEBAR / 2, bottomEdge - 12 - (BUTTON_SIZE / 2) * k);
+      fitBoard(left + 12, safe.top + 8, sx - 12, bottomEdge - 8);
+      toast.position.set((left + sx) / 2, bottomEdge - 48);
+      return;
     }
-    touchBar.children.forEach((button, i) =>
-      column
-        ? button.position.set(0, i * (BUTTON_SIZE + 12))
-        : button.position.set((i - 1) * (BUTTON_SIZE + 22), 0),
-    );
-    if (column) touchBar.position.set(right - 16 - BUTTON_SIZE / 2, top + BUTTON_SIZE / 2);
-    else touchBar.position.set(cx, bottomEdge - 16 - BUTTON_SIZE / 2);
-    const above = touch && !column ? BUTTON_SIZE + 52 : 0;
+
+    const touch = touchBar.visible;
+    const top = safe.top + (width < 640 ? 150 : 96);
+    const bottom = touch ? 150 : 40;
+    const sides = width * 0.1;
+    fitBoard(cx - (width - sides) / 2, top, cx + (width - sides) / 2, bottomEdge - bottom + 10);
+
+    panel(210, 64, levelBg);
+    levelPanel.position.set(left + 16, safe.top + 16);
+    let x = right - 16;
+    for (const c of [...counters].reverse()) {
+      c.shape();
+      x -= c.c.width;
+      c.c.position.set(x, safe.top + (width < 640 ? 88 : 16));
+      x -= 8;
+    }
+    touchBar.scale.set(1);
+    touchBar.children.forEach((button, i) => button.position.set((i - 1) * (BUTTON_SIZE + 22), 0));
+    touchBar.position.set(cx, bottomEdge - 16 - BUTTON_SIZE / 2);
+    const above = touch ? BUTTON_SIZE + 52 : 0;
+    Object.assign(hint.style, { wordWrap: false, align: 'left' });
+    hint.anchor.set(0.5, 1);
     hint.position.set(cx, bottomEdge - 12 - above);
     toast.position.set(cx, bottomEdge - 64 - above);
   }
