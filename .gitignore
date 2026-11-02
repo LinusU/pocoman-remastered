@@ -1,0 +1,6 @@
+node_modules
+dist
+
+# Original PocoMan data; supply your own copy at runtime
+*.MAP
+*.map
