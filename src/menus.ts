@@ -2,7 +2,7 @@ import { Game } from './game';
 import { formatTime, type LevelComplete } from './play';
 import type { Effects, MapLevel } from './pocomap';
 import type { Profile, SaveStore } from './profiles';
-import { button, el, escapeHtml, slider, toggle, View, type Ui } from './ui';
+import { button, el, escapeHtml, pickTextFile, saveTextFile, slider, toggle, View, type Ui } from './ui';
 
 // All the menu screens. They only describe what to show and what each
 // choice does; the game itself is driven through MenuContext.
@@ -172,6 +172,16 @@ export function createMenus(ctx: MenuContext) {
       store.create(name);
       mainMenu(2);
     }, () => profiles(store.profiles.length))));
+    const importAt = v.items.length;
+    list.append(button(v, 'Import profile', async () => {
+      const text = await pickTextFile('.json,application/json');
+      if (text === null) return;
+      try {
+        profileActions(store.importProfile(text));
+      } catch (e) {
+        message('Couldn’t import', e instanceof Error ? e.message : String(e), () => profiles(importAt));
+      }
+    }, 'From a downloaded profile file'));
     panel.append(list);
     v.root.append(panel);
     v.onBack = () => mainMenu(2);
@@ -194,12 +204,28 @@ export function createMenus(ctx: MenuContext) {
         store.rename(p.id, name);
         profiles(index);
       }, () => profileActions(p))),
+      button(v, 'Download', () => {
+        const name = p.name.replace(/[^\p{L}\p{N} ._-]+/gu, '').trim() || 'Profile';
+        saveTextFile(`PocoMan - ${name}.json`, store.exportProfile(p));
+      }, 'Save to a file, to import on another device'),
       button(v, 'Delete', () => confirmDelete(p), store.profiles.length > 1 ? '' : 'Resets this profile'),
       button(v, 'Back', () => profiles(index)),
     );
     panel.append(menu);
     v.root.append(panel);
     v.onBack = () => profiles(index);
+    ui.show(v);
+  }
+
+  function message(title: string, text: string, back: () => void) {
+    const v = new View('message dim');
+    const panel = el('div', 'panel');
+    panel.append(el('div', 'head', `<h2>${escapeHtml(title)}</h2>`), el('p', '', escapeHtml(text)));
+    const ok = button(v, 'OK', back);
+    ok.style.alignItems = 'center';
+    panel.append(ok);
+    v.root.append(panel);
+    v.onBack = back;
     ui.show(v);
   }
 

@@ -57,6 +57,15 @@ interface SaveData {
   settings: Settings;
 }
 
+/** A downloaded profile. */
+interface ProfileFile {
+  format: typeof PROFILE_FORMAT;
+  version: 1;
+  exportedAt: number;
+  profile: Profile;
+}
+
+const PROFILE_FORMAT = 'pocoman-profile';
 const SAVE_KEY = 'pocoman.save';
 const DEFAULT_SETTINGS: Settings = { music: 0.7, sfx: 0.8, voice: 1, motionSounds: true, showHints: true };
 
@@ -177,6 +186,59 @@ export class SaveStore {
     if (!this.data.profiles.length) this.data.profiles.push(newProfile('Player 1'));
     if (!this.profile(this.data.activeId)) this.data.activeId = this.data.profiles[0].id;
     this.saveNow();
+  }
+
+  /** A profile as a file's contents, for `importProfile` here or elsewhere. */
+  exportProfile(p: Profile): string {
+    const file: ProfileFile = { format: PROFILE_FORMAT, version: 1, exportedAt: Date.now(), profile: p };
+    return JSON.stringify(file, null, 2);
+  }
+
+  /**
+   * Adds a profile from `exportProfile`'s output, always as a new profile so
+   * nothing is overwritten, and makes it the active one. Throws with a
+   * message for the player if the file isn't a profile.
+   */
+  importProfile(text: string): Profile {
+    let file: Partial<ProfileFile>;
+    try {
+      file = JSON.parse(text);
+    } catch {
+      throw new Error('That file isn’t a PocoMan profile.');
+    }
+    if (file?.format !== PROFILE_FORMAT || typeof file.profile !== 'object' || !file.profile) {
+      throw new Error('That file isn’t a PocoMan profile.');
+    }
+    if (file.version !== 1) throw new Error('That profile is from a newer version of PocoMan.');
+    const from = file.profile as Partial<Profile>;
+    const p = newProfile(this.uniqueName(String(from.name ?? '').trim().slice(0, 24) || 'Imported'));
+    const num = (v: unknown, fallback = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+    p.createdAt = num(from.createdAt, p.createdAt);
+    p.lastPlayedAt = num(from.lastPlayedAt, p.lastPlayedAt);
+    p.furthest = Math.max(0, Math.min(num(from.furthest), this.levels.length - 1));
+    p.current = Math.max(0, Math.min(num(from.current), this.levels.length - 1));
+    for (const [key, r] of Object.entries(from.records ?? {})) {
+      if (!Number.isInteger(Number(key)) || typeof r !== 'object' || !r) continue;
+      p.records[Number(key)] = { moves: num(r.moves), pushes: num(r.pushes), timeMs: num(r.timeMs), solvedAt: num(r.solvedAt) };
+    }
+    for (const key of Object.keys(p.stats) as (keyof ProfileStats)[]) p.stats[key] = num(from.stats?.[key]);
+    // The level in progress is checked against the level when it's resumed.
+    const run = from.run;
+    if (run && typeof run.levelNumber === 'number' && typeof run.state?.player?.x === 'number' && Array.isArray(run.state.gems)) {
+      p.run = { levelNumber: run.levelNumber, state: run.state, elapsedMs: num(run.elapsedMs) };
+    }
+    this.data.profiles.push(p);
+    this.data.activeId = p.id;
+    this.saveNow();
+    return p;
+  }
+
+  /** `name`, or with a number after it if a profile already has that name. */
+  private uniqueName(name: string): string {
+    const taken = new Set(this.data.profiles.map((p) => p.name));
+    let candidate = name;
+    for (let n = 2; taken.has(candidate); n++) candidate = `${name} (${n})`;
+    return candidate;
   }
 
   /** Highest open level index: the stored one, or one past any solved level. */

@@ -216,3 +216,44 @@ export function toggle(view: View, label: string, get: () => boolean, set: (v: b
   render();
   return view.add(row, { select: flip, adjust: flip });
 }
+
+// --- Files -------------------------------------------------------------------
+
+/**
+ * Hands a text file to the player. Phones get the share sheet (Save to
+ * Files, AirDrop and so on), since a download in a Home Screen app on an
+ * iPhone opens a viewer with no way back; elsewhere it downloads.
+ */
+export async function saveTextFile(name: string, text: string, type = 'application/json'): Promise<void> {
+  const file = new File([text], name, { type });
+  if (matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      return;
+    } catch (e) {
+      // Closing the share sheet is a choice, not a reason to download instead.
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+    }
+  }
+  const url = URL.createObjectURL(file);
+  const a = el('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Asks for a file and resolves with its text, or null if none was chosen. */
+export function pickTextFile(accept: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const input = el('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      resolve(file ? file.text() : null);
+    });
+    input.addEventListener('cancel', () => resolve(null));
+    input.click();
+  });
+}

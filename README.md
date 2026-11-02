@@ -21,7 +21,9 @@ sounds, controls hint, fullscreen, camera tuning panel) and Credits.
 Progress is saved per profile in localStorage, including the level in
 progress, which resumes exactly where it was left. As in the original, a
 level must be solved before the next one opens; any level up to the furthest
-reached can be replayed.
+reached can be replayed. A profile can be downloaded as a file (on phones,
+through the share sheet) and imported on another device or browser, where it
+is always added as a new profile.
 
 Keyboard: arrows / WASD move, Z or Backspace undo the last push, R restart,
 N / P next / previous level, M music, Esc pause menu. Menus: arrows, Enter,
