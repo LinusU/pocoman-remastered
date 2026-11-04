@@ -39,8 +39,9 @@ Touch (and mouse): tap PocoMan to put a dot on every cell he can walk to, and
 tap a dot to walk there by the shortest way. Tap an object to put dots on
 every cell it can be pushed to in one straight run; tapping one walks round
 to the right side and makes the push. Tap the selection again, or empty
-floor, to cancel. On a touch screen a bar of Undo, Restart (tap twice) and
-Menu buttons appears along the bottom, or down the side in landscape.
+floor, to cancel. On a touch screen a swipe anywhere takes one step that
+way, and a bar of Undo, Restart (tap twice) and Menu buttons appears along
+the bottom, or down the side in landscape.
 
 iPhones can't put a web page fullscreen, so there the Fullscreen option
 explains adding PocoMan to the Home Screen instead; opened from there it runs

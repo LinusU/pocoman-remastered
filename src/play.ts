@@ -40,6 +40,8 @@ const CELEBRATE_MS = 1600;
 // Step times when a tap walks PocoMan somewhere or pushes for him.
 const AUTO_WALK_MS = 115;
 const AUTO_PUSH_MS = 170;
+// How far a finger travels (in screen pixels) before it's a swipe, not a tap.
+const SWIPE_PX = 24;
 // Restart from the touch bar needs a second tap within this long.
 const RESTART_CONFIRM_MS = 2500;
 
@@ -528,7 +530,7 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
 
   const KEYBOARD_HINT = 'Arrows / WASD move  ·  Z undo  ·  R restart  ·  Esc menu';
   const GAMEPAD_HINT = 'Stick / D-pad move  ·  B undo  ·  hold View restart  ·  Start menu';
-  const TOUCH_HINT = 'Tap PocoMan or an object to see where it can go';
+  const TOUCH_HINT = 'Swipe to step, or tap PocoMan or an object to see where it can go';
   const hintFor = { keyboard: KEYBOARD_HINT, gamepad: GAMEPAD_HINT, touch: TOUCH_HINT };
 
   function updateHud() {
@@ -605,7 +607,7 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
     touchBar.children.forEach((button, i) => button.position.set((i - 1) * (BUTTON_SIZE + 22), 0));
     touchBar.position.set(cx, bottomEdge - 16 - BUTTON_SIZE / 2);
     const above = touch ? BUTTON_SIZE + 52 : 0;
-    Object.assign(hint.style, { wordWrap: false, align: 'left' });
+    Object.assign(hint.style, { wordWrap: true, wordWrapWidth: width - 32, align: 'center' });
     hint.anchor.set(0.5, 1);
     hint.position.set(cx, bottomEdge - 12 - above);
     toast.position.set(cx, bottomEdge - 64 - above);
@@ -809,11 +811,11 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
   // Where each actor was drawn last frame, for telling what a tap landed on.
   let actorHits: { target: TapTarget; z: number; r: Rect }[] = [];
 
-  function onBoardTap(e: FederatedPointerEvent) {
+  function onBoardTap(at: Point) {
     if (!acceptingTaps || celebrated || introMs > 0 || game.isSolved()) return;
     // A tap mid-walk stops there; the tap then counts from where he stops.
     autoPath = [];
-    const local = world.toLocal(e.global);
+    const local = world.toLocal(at);
     const ground = cam.unproject(local.x, local.y);
     // Fingers are blunt, so actors are a bit bigger to tap than they look.
     const pad = 12 / world.scale.x;
@@ -835,9 +837,35 @@ export function createPlayScreen(env: PlayEnv, initialCamera: CameraSettings) {
       autoLength = result.length;
     }
   }
+  // A finger that travels far enough is a swipe, one step that way, taken as
+  // soon as it's clear; one that stays put is a tap, taken when it lifts.
+  let press: { id: number; x: number; y: number } | null = null;
   root.eventMode = 'static';
   root.hitArea = app.screen;
-  root.on('pointerdown', onBoardTap);
+  root.on('pointerdown', (e: FederatedPointerEvent) => {
+    if (e.pointerType !== 'touch') return onBoardTap(e.global);
+    press = { id: e.pointerId, x: e.global.x, y: e.global.y };
+  });
+  root.on('pointermove', (e: FederatedPointerEvent) => {
+    if (press?.id !== e.pointerId) return;
+    const dx = e.global.x - press.x;
+    const dy = e.global.y - press.y;
+    if (Math.hypot(dx, dy) < SWIPE_PX) return;
+    press = null;
+    if (!acceptingTaps || celebrated || introMs > 0) return;
+    autoPath = [];
+    taps.clear();
+    input.swipe(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up');
+  });
+  const lift = (e: FederatedPointerEvent) => {
+    if (press?.id !== e.pointerId) return;
+    const at = { x: press.x, y: press.y };
+    press = null;
+    onBoardTap(at);
+  };
+  root.on('pointerup', lift);
+  root.on('pointerupoutside', lift);
+  root.on('pointercancel', () => (press = null));
 
   /** Takes the next move of a tapped walk or push, if there is one. */
   function autoStep(): boolean {

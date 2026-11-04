@@ -278,6 +278,11 @@ export class Input {
     return this.actions.shift();
   }
 
+  /** A swipe on the board: one step, buffered like a tapped key. */
+  swipe(dir: Dir): void {
+    if (this.mode === 'game' && this.taps.length < 3) this.taps.push(dir);
+  }
+
   clearTaps(): void {
     this.taps.length = 0;
   }
